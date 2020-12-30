@@ -1,0 +1,6 @@
+pytest
+coverage
+wheel
+flake8
+RPi.GPIO
+spidev
