@@ -8,7 +8,7 @@ with open('README.md', 'r') as fh:
 
 setup(
     name='mfrc522-reader',
-    version='1.0.0',
+    version='1.0.1',
     author='Brian Curnow',
     author_email='brian.curnow+mfrc522-reader@gmail.com',
     description='An implementation of a reader for NXP Semiconductors MFRC522 RFID readers.',
