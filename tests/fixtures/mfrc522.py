@@ -43,16 +43,16 @@ class Xfer2Debug:
                 print(f'{expected:<60}{actual:<60}')
             else:
                 print(f'*{expected:<60}{actual:<60}')
-                
+
     def _convert_to_meaning(self, calls, side_effect):
         """ Converts the List of calls to values with actual meaning rather than simple decimal values."""
         meaning = []
-        for call, rv in zip(calls, side_effect):
-            if type(call.args) is tuple:
+        for acall, rv in zip(calls, side_effect):
+            if type(acall.args) is tuple:
                 # There is only a single argument to the xfer2 call, a list
-                if len(call.args) == 1:
+                if len(acall.args) == 1:
                     # Grab the list
-                    args = call.args[0]
+                    args = acall.args[0]
                     if type(args) is list:
                         # OK, now we can actually start checking
                         # First argument in the register to the print to, need to determine if this is a read or a write
@@ -90,13 +90,13 @@ class Xfer2Debug:
                             meaning.append(f'{xfer2_type}({register.name}) (0x{rv[1]:X} ({rv[1]}) (0b{rv[1]:08b})')
 
                     else:
-                        meaning.append(f'Wrong type of call.args[0] ({type(args)}): {call}')
+                        meaning.append(f'Wrong type of call.args[0] ({type(args)}): {acall}')
                 else:
-                    meaning.append(f'Wrong number of args: {call}')
+                    meaning.append(f'Wrong number of args: {acall}')
             else:
-                meaning.append(f'Unknown type of args ({type(call.args)}): {call}')
-            if call.kwargs:
-                meaning.append(f'Found kwargs in call, no support yet (should not happen!): {call}')
+                meaning.append(f'Unknown type of args ({type(acall.args)}): {acall}')
+            if acall.kwargs:
+                meaning.append(f'Found kwargs in call, no support yet (should not happen!): {acall}')
         return meaning
 
 
@@ -113,7 +113,7 @@ def mock_dependencies():
         max_speed_hz_property = PropertyMock('max_speed_hz', return_value=MFRC522.MAX_SPEED_HZ)
         type(spi).max_speed_hz = max_speed_hz_property
         type(GPIO).BCM = PropertyMock('BCM', return_value=realGPIO.BCM)
-        type(GPIO).BOARD = PropertyMock('BOARD', return_value=realGPIO.BCM)
+        type(GPIO).BOARD = PropertyMock('BOARD', return_value=realGPIO.BOARD)
         type(GPIO).OUT = PropertyMock('OUTPUT', return_value=realGPIO.OUT)
         type(GPIO).HIGH = PropertyMock('HIGH', return_value=realGPIO.HIGH)
 
