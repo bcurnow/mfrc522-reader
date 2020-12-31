@@ -550,10 +550,10 @@ class MFRC522:
                 uid_start_index = 0  # We know nothing yet
 
             if cascade_level == MFRC522.PICCCommand.ANTICOLL_CS2:
-                uid_start_index = 4  # We know about 4 bytes
+                uid_start_index = 3  # We know about 3 bytes (because we got a cascade tag)
 
             if cascade_level == MFRC522.PICCCommand.ANTICOLL_CS3:
-                uid_start_index = 7  # We know about 7 bytes
+                uid_start_index = 6  # We know about 6 bytes (because we got a cascade tag)
 
             # Set the command we'll be using
             buffer[0] = cascade_level
@@ -665,17 +665,6 @@ class MFRC522:
                         # make sure we perform a select this time through
                         select = True
 
-            # We've completed the select for this cascade level, copy over the known uid bytes
-            # Need to adjust based on whether we've received a cascade tag or not
-            if buffer[2] == MFRC522.CASCADE_TAG:
-                buffer_index_with_uid = 3
-                bytes_to_copy = 3
-            else:
-                buffer_index_with_uid = 2
-                bytes_to_copy = 4
-            for i, buffer_index_with_uid in zip(range(bytes_to_copy), range(buffer_index_with_uid, buffer_index_with_uid + bytes_to_copy)):
-                uid[uid_start_index + i] = buffer[buffer_index_with_uid]
-
             # Select complete, let's review the SAK
             if (len(results) != 3):
                 # We don't have 1 byte of SAK and 2 bytes of CRC
@@ -687,6 +676,17 @@ class MFRC522:
                 return (MFRC522.ReturnCode.SAK_CRC_ERROR, crc_results)
             if (results[1] != crc_results[0]) or (results[2] != crc_results[1]):
                 return (MFRC522.ReturnCode.SAK_CRC_WRONG, results + crc_results)
+
+            # We've completed the select for this cascade level, copy over the known uid bytes
+            # Need to adjust based on whether we've received a cascade tag or not
+            if buffer[2] == MFRC522.CASCADE_TAG:
+                buffer_index_with_uid = 3
+                bytes_to_copy = 3
+            else:
+                buffer_index_with_uid = 2
+                bytes_to_copy = 4
+            for i, buffer_index_with_uid in zip(range(bytes_to_copy), range(buffer_index_with_uid, buffer_index_with_uid + bytes_to_copy)):
+                uid[uid_start_index + i] = buffer[buffer_index_with_uid]
 
             # Do we have the whole UID or not?
             if results[0] & MFRC522.BIT_MASK_CASCADE_BIT_SET:

@@ -381,7 +381,7 @@ def test_MFRC522_transceive(reader, xfer2, interrupts, expected_status, expected
             [0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7], None, MFRC522.ReturnCode.OK, []
         ),
         (
-            [0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0x10], None, MFRC522.ReturnCode.OK, []
+            [0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA], None, MFRC522.ReturnCode.OK, []
         ),
         (
             [0x1, 0x2, 0x3, 0x4], None, MFRC522.ReturnCode.OK, [3]
@@ -436,13 +436,25 @@ def test_MFRC522_anticollision(reader, xfer2, uid, expected_results, expected_st
         expected_results = uid
 
     clear_bits_after_collision(xfer2)
-    cascade_level(xfer2, MFRC522.PICCCommand.ANTICOLL_CS1, uid[:4], len(uid) > 4, collision_positions, expected_status)
-    if len(uid) > 4:
-        # need to go to CS2
-        cascade_level(xfer2, MFRC522.PICCCommand.ANTICOLL_CS2, uid[4:7], len(uid) > 7, collision_positions, expected_status)
-    if len(uid) > 7:
-        # need to go to CS2
-        cascade_level(xfer2, MFRC522.PICCCommand.ANTICOLL_CS3, uid[7:], False, collision_positions, expected_status)
+
+    if len(uid) == 4:
+        # This is the max cascade level we'll use
+        cascade_level(xfer2, MFRC522.PICCCommand.ANTICOLL_CS1, uid, False, collision_positions, expected_status)
+    else:
+        # We'll need to continue to level 2
+        cascade_level(xfer2, MFRC522.PICCCommand.ANTICOLL_CS1, [MFRC522.CASCADE_TAG] + uid[:3], True, collision_positions, expected_status)
+
+        if len(uid) == 7:
+            # This is the max cascade level we'll use
+            cascade_level(xfer2, MFRC522.PICCCommand.ANTICOLL_CS2, uid[3:], False, collision_positions, expected_status)
+        else:
+            # We'll need to continue to level 3
+            cascade_level(xfer2, MFRC522.PICCCommand.ANTICOLL_CS2, [MFRC522.CASCADE_TAG] + uid[3:6], True, collision_positions, expected_status)
+
+            if len(uid) == 10:
+                # need to go to CS3
+                cascade_level(xfer2, MFRC522.PICCCommand.ANTICOLL_CS3, uid[6:], False, collision_positions, expected_status)
+
     xfer2.set_side_effect()
     status, results = reader.anticollision()
     assert status == expected_status
