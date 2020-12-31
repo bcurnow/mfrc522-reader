@@ -1,3 +1,5 @@
+import re
+
 import pytest
 import RPi.GPIO as realGPIO
 from unittest.mock import call
@@ -25,43 +27,36 @@ def test_Register_write():
 
 
 @pytest.mark.parametrize(
-    ('constructor_args', 'bus', 'device', 'gpio_mode', 'rst_pin', 'expected_rst_pin', 'antenna'),
+    ('constructor_args', 'bus', 'device', 'antenna'),
     [
-        (None, 0, 0, realGPIO.BOARD, None, MFRC522.GPIO_BOARD_RST_DEFAULT, ANTENNA_ON),
-        ({}, 0, 0, realGPIO.BOARD, None, MFRC522.GPIO_BOARD_RST_DEFAULT, ANTENNA_ON),
-        ({}, 1, 0, realGPIO.BOARD, None, MFRC522.GPIO_BOARD_RST_DEFAULT, ANTENNA_ON),
-        ({}, 0, 1, realGPIO.BOARD, None, MFRC522.GPIO_BOARD_RST_DEFAULT, ANTENNA_ON),
-        ({}, 0, 0, realGPIO.BCM, None, MFRC522.GPIO_BCM_RST_DEFAULT, ANTENNA_ON),
-        ({}, 0, 0, realGPIO.BOARD, 17, 17, ANTENNA_ON),
-        ({}, 0, 0, realGPIO.BCM, 18, 18, ANTENNA_ON),
+        (None, 0, 0, ANTENNA_ON),
+        ({}, 0, 0, ANTENNA_ON),
+        ({}, 1, 0, ANTENNA_ON),
+        ({}, 0, 1, ANTENNA_ON),
     ],
     ids=[
         'no-arg',
         'explicit defaults',
         'custom bus',
         'custom device',
-        'BCM',
-        'custom rst_pin with BOARD',
-        'custom rst_pin with BCM',
     ]
     )
-def test_MFRC522___init__(mock_dependencies, xfer2, constructor_args, bus, device, gpio_mode, rst_pin, expected_rst_pin, antenna):
+def test_MFRC522___init__(mock_dependencies, xfer2, constructor_args, bus, device, antenna):
     initialize_card(xfer2, antenna)
     xfer2.set_side_effect()
+    mock_dependencies.GPIO.getmode.return_value = None
 
     if constructor_args is None:
         reader = MFRC522()
     else:
         constructor_args['bus'] = bus
         constructor_args['device'] = device
-        constructor_args['gpio_mode'] = gpio_mode
-        constructor_args['rst_pin'] = rst_pin
         reader = MFRC522(**constructor_args)
     mock_dependencies.spi.open.assert_called_once_with(bus, device)
     mock_dependencies.max_speed_hz_property.assert_called_once_with(MFRC522.MAX_SPEED_HZ)
-    mock_dependencies.GPIO.setmode.assert_called_once_with(gpio_mode)
-    mock_dependencies.GPIO.setup.assert_called_once_with(expected_rst_pin, mock_dependencies.GPIO.OUT)
-    mock_dependencies.GPIO.output.assert_called_once_with(expected_rst_pin, mock_dependencies.GPIO.HIGH)
+    mock_dependencies.GPIO.setmode.assert_called_once_with(mock_dependencies.GPIO.BOARD)
+    mock_dependencies.GPIO.setup.assert_called_once_with(MFRC522.GPIO_BOARD_RST_DEFAULT, mock_dependencies.GPIO.OUT)
+    mock_dependencies.GPIO.output.assert_called_once_with(MFRC522.GPIO_BOARD_RST_DEFAULT, mock_dependencies.GPIO.HIGH)
     mock_dependencies.atexit.register.assert_called_once_with(reader.close)
 
 
@@ -150,6 +145,56 @@ def test_MFRC522_read_uid(reader_mocks, xfer2, card_not_present_count, expected,
 
     if do_timeout:
         reader_mocks.time.time.assert_has_calls([call()] * (1 + card_not_present_count))
+
+
+@pytest.mark.parametrize(
+    ('current_gpio_mode', 'gpio_mode', 'rst_pin', 'expected_rst_pin'),
+    [
+        (None, realGPIO.BOARD, None, MFRC522.GPIO_BOARD_RST_DEFAULT),
+        (None, realGPIO.BCM, None, MFRC522.GPIO_BCM_RST_DEFAULT),
+        (None, realGPIO.BOARD, 5, 5),
+        (None, realGPIO.BCM, 5, 5),
+        (realGPIO.BOARD, realGPIO.BOARD, None, MFRC522.GPIO_BOARD_RST_DEFAULT),
+        (realGPIO.BOARD, realGPIO.BOARD, 5, 5),
+        (realGPIO.BOARD, realGPIO.BCM, None, MFRC522.GPIO_BOARD_RST_DEFAULT),
+        (realGPIO.BOARD, realGPIO.BCM, 5, None),
+        (realGPIO.BCM, realGPIO.BCM, None, MFRC522.GPIO_BCM_RST_DEFAULT),
+        (realGPIO.BCM, realGPIO.BCM, 5, 5),
+        (realGPIO.BCM, realGPIO.BOARD, None, MFRC522.GPIO_BCM_RST_DEFAULT),
+        (realGPIO.BCM, realGPIO.BOARD, 5, None),
+    ],
+    ids=[
+        'GPIO mode unset, requested BOARD, rst_pin unset',
+        'GPIO mode unset, requested BCM, rst_pin unset',
+        'GPIO mode unset, requested BOARD, rst_pin set',
+        'GPIO mode unset, requested BCM, rst_pin set',
+        'GPIO mode BOARD, requested BOARD, rst_pin unset',
+        'GPIO mode BOARD, requested BOARD, rst_pin set',
+        'GPIO mode BOARD, requested BCM, rst_pin unset',
+        'GPIO mode BOARD, requested BCM, rst_pin set',
+        'GPIO mode BCM, requested BCM, rst_pin unset',
+        'GPIO mode BCM, requested BCM, rst_pin set',
+        'GPIO mode BCM, requested BOARD, rst_pin unset',
+        'GPIO mode BCM, requested BOARD, rst_pin set',
+    ]
+    )
+def test_MFRC522_setup_gpio(reader_mocks, current_gpio_mode, gpio_mode, rst_pin, expected_rst_pin):
+    reader_mocks.GPIO.getmode.return_value = current_gpio_mode
+
+    if expected_rst_pin is None:
+        match = re.escape(
+            f'GPIO mode ({gpio_mode}) and rst_pin ({rst_pin}) were provided but GPIO mode is already set to set to {current_gpio_mode}.'
+            )
+        with pytest.raises(ValueError, match=match):
+            reader_mocks.reader.setup_gpio(gpio_mode, rst_pin)
+    else:
+        reader_mocks.reader.setup_gpio(gpio_mode, rst_pin)
+
+        if not current_gpio_mode:
+            reader_mocks.GPIO.setmode.assert_called_once_with(gpio_mode)
+
+        reader_mocks.GPIO.setup.assert_called_once_with(expected_rst_pin, reader_mocks.GPIO.OUT)
+        reader_mocks.GPIO.output.assert_called_once_with(expected_rst_pin, reader_mocks.GPIO.HIGH)
 
 
 def test_MFRC522_initialize_card(reader, xfer2):
@@ -327,7 +372,7 @@ def test_MFRC522_transceive(reader, xfer2, interrupts, expected_status, expected
 
 
 @pytest.mark.parametrize(
-    ('uid','expected_results', 'expected_status', 'collision_positions'),
+    ('uid', 'expected_results', 'expected_status', 'collision_positions'),
     [
         (
             [0x1, 0x2, 0x3, 0x4], None, MFRC522.ReturnCode.OK, []
@@ -602,7 +647,8 @@ def cascade_level(xfer2, cascade_level, uid, set_cascade_bit=False, collision_po
 
     bcc = uid[0] ^ uid[1] ^ uid[2] ^ uid[3]
     if transceive_error:
-        transceive(xfer2, [cascade_level, ((2 + uid_bytes_to_send) << 4) + uid_bits_to_send] + transceive_input_uid, None, status=MFRC522.ReturnCode.ERR)
+        data = [cascade_level, ((2 + uid_bytes_to_send) << 4) + uid_bits_to_send] + transceive_input_uid
+        transceive(xfer2, data, None, status=MFRC522.ReturnCode.ERR)
         return
     else:
         transceive(xfer2, [cascade_level, ((2 + uid_bytes_to_send) << 4) + uid_bits_to_send] + transceive_input_uid, uid + [bcc])
@@ -630,7 +676,7 @@ def cascade_level(xfer2, cascade_level, uid, set_cascade_bit=False, collision_po
             elif sak_crc_wrong_error:
                 calculate_crc(xfer2, sak[:1], ['bogus', 'values'])
             else:
-                #Recalculate the CRC on the SAK
+                # Recalculate the CRC on the SAK
                 calculate_crc(xfer2, sak[:1], crc)
 
 
@@ -649,7 +695,8 @@ def collision_cycle(xfer2, cascade_level, uid, collision_positions, set_cascade_
             index_to_flip = (uid_bytes_to_send - 1) + (1 if uid_bits_to_send else 0)
             transceive_input_uid[index_to_flip] |= (1 << bit_to_flip)
             write(xfer2, MFRC522.Register.BitFramingReg, (uid_bits_to_send << 4) + uid_bits_to_send)
-            transceive(xfer2, [cascade_level, ((2 + uid_bytes_to_send) << 4) + uid_bits_to_send] + transceive_input_uid, transceive_return_uid, status=MFRC522.ReturnCode.COLLISION)
+            data = [cascade_level, ((2 + uid_bytes_to_send) << 4) + uid_bits_to_send] + transceive_input_uid
+            transceive(xfer2, data, transceive_return_uid, status=MFRC522.ReturnCode.COLLISION)
         else:
             # Default anticollision
             write(xfer2, MFRC522.Register.BitFramingReg, 0)

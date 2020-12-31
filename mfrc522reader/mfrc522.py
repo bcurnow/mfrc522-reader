@@ -260,19 +260,7 @@ class MFRC522:
         self.spi = spidev.SpiDev()
         self.spi.open(bus, device)
         self.spi.max_speed_hz = MFRC522.MAX_SPEED_HZ
-
-        GPIO.setmode(gpio_mode)
-
-        if not rst_pin:  # auto set based on GPIO mode
-            if gpio_mode == GPIO.BCM:
-                rst_pin = MFRC522.GPIO_BCM_RST_DEFAULT
-            else:
-                rst_pin = MFRC522.GPIO_BOARD_RST_DEFAULT
-
-        # Setup the reset pin as an output
-        GPIO.setup(rst_pin, GPIO.OUT)
-        GPIO.output(rst_pin, GPIO.HIGH)
-
+        self.setup_gpio(gpio_mode, rst_pin)
         # Make sure we cleanup before we exit
         atexit.register(self.close)
         self.initialize_card()
@@ -319,6 +307,41 @@ class MFRC522:
             time.sleep(0.001)  # Wait a very short time to avoid hogging the CPU
             if do_timeout and time.time() >= timeout:
                 return None
+
+    def setup_gpio(self, gpio_mode, rst_pin):
+        """ Correctly configures the GPIO library."""
+        current_gpio_mode = GPIO.getmode()
+
+        if current_gpio_mode:
+            # Something already set the GPIO mode
+            if current_gpio_mode != gpio_mode:
+                # The value is different that we expected
+                # Check to see if the rst_pin was passed in, if it wasnt', we'll just adopt the
+                # current GPIO mode
+                if rst_pin:
+                    # Can't continue, the reset pin was passed in and the GPIO modes don't align
+                    # if we continue, we'll setup the reset pin in the wrong place.
+                    msg = [
+                        f'GPIO mode ({gpio_mode}) and rst_pin ({rst_pin}) were provided but GPIO mode is already set to set to {current_gpio_mode}. ',
+                        'Either change the rst_pin to match the current GPIO mode or determine what other process is setting the GPIO mode.'
+                    ]
+                    raise ValueError(''.join(msg))
+                else:
+                    # rst_pin is the default (None) so we can just switch over to the other mode
+                    gpio_mode = current_gpio_mode
+        else:
+            # GPIO mode is currently unset, set it to the value we wasnt
+            GPIO.setmode(gpio_mode)
+
+        if not rst_pin:  # auto set based on GPIO mode
+            if gpio_mode == GPIO.BCM:
+                rst_pin = MFRC522.GPIO_BCM_RST_DEFAULT
+            else:
+                rst_pin = MFRC522.GPIO_BOARD_RST_DEFAULT
+
+        # Setup the reset pin as an output
+        GPIO.setup(rst_pin, GPIO.OUT)
+        GPIO.output(rst_pin, GPIO.HIGH)
 
     def initialize_card(self):
         """ Resets the card and then sets our defaults."""
@@ -534,7 +557,6 @@ class MFRC522:
 
             # Set the command we'll be using
             buffer[0] = cascade_level
-
 
             # Determine which index in the buffer we need to start copying the uid information into
             # Default to 2 ([0] = SEL, [1] = NVB)
