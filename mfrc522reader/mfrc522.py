@@ -271,7 +271,7 @@ class MFRC522:
 
         # According to the NXP docs the content of the ATQA should be ignored
         # However, we will check both the status and that we received 16 bits (2 bytes)
-        if status == MFRC522.ReturnCode.OK and results_len == 16:
+        if status == MFRC522.ReturnCode.OK and results_len == 2 * MFRC522.BITS_IN_BYTE:
             return True
         return False
 
@@ -363,7 +363,7 @@ class MFRC522:
 
         """
         val = self.spi.xfer2([register.read(), 0])
-        # The above reads a single byte but based on the NXP docs, the first byte returns is always discarded
+        # The above reads a single byte but based on the NXP docs, the first byte returned is always discarded
         return val[1]
 
     def write(self, register, values):
@@ -534,8 +534,9 @@ class MFRC522:
         # How many bits within the UID have we verified so far
         known_bits = 0
         cascade_level = MFRC522.PICCCommand.ANTICOLL_CS1
+        # 10 bytes is the maximum uid length (for a triple size PICC)
         uid = [0] * 10
-        # A list to hold the data we need to transceive
+        # A list to hold the data we need to transceive, we'll never send more than 9 bytes
         buffer = [0] * 9
         # How many extra bits do we need to transceive?
         transceive_bits = 0
@@ -589,8 +590,8 @@ class MFRC522:
                     transceive_buffer_size = 9
                 else:  # This is anticollision
                     if valid_bits > 0:
-                        transceive_bytes = int(valid_bits / 8)
-                        transceive_bits = valid_bits % 8
+                        transceive_bytes = int(valid_bits / MFRC522.BITS_IN_BYTE)
+                        transceive_bits = valid_bits % MFRC522.BITS_IN_BYTE
                         # Calculate the total number of whole bytes we're going to send,
                         # we always send SEL and NVB and we're only sending the valid UID bytes
                         nvb_byte_count = 2 + transceive_bytes
@@ -636,13 +637,13 @@ class MFRC522:
                     known_bits = collision_position
                     # The protocol indicates we need to flip the bit prior to the collision position and try again
                     # Need to first know the specific bit that caused the collision
-                    collision_bit = known_bits % 8
+                    collision_bit = known_bits % MFRC522.BITS_IN_BYTE
                     # Need to know the specific bit location within the last byte to flip
                     # Also need to account for any byte boundaries so we can't just subtract 1 from the collision bit
-                    bit_to_flip = (known_bits - 1) % 8
+                    bit_to_flip = (known_bits - 1) % MFRC522.BITS_IN_BYTE
                     # Determine which index in the buffer contains the bit that needs to be flipped
                     # Start with index 1 ([0] = SEL, [1] = NVB), add the number of whole bytes and then add one if there are still some bits
-                    bit_to_flip_index = 1 + (int(known_bits / 8)) + (1 if collision_bit else 0)
+                    bit_to_flip_index = 1 + (int(known_bits / MFRC522.BITS_IN_BYTE)) + (1 if collision_bit else 0)
                     # Flip the bit by bitwise OR'ing with 1 shifted to the correct bit position
                     buffer[bit_to_flip_index] |= (1 << bit_to_flip)
                     # The known bits have all be validated so reset valid_bits
@@ -665,9 +666,8 @@ class MFRC522:
                         # make sure we perform a select this time through
                         select = True
 
-            # Select complete, let's review the SAK
+            # Select complete, let's review the SAK, we should always return 3 bytes (SAK + 2 byte CRC)
             if (len(results) != 3):
-                # We don't have 1 byte of SAK and 2 bytes of CRC
                 return (MFRC522.ReturnCode.INVALID_SAK_RESULT, results)
 
             # Let's double check that CRC_A we got back by recalculating our own
