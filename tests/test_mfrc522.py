@@ -27,36 +27,42 @@ def test_Register_write():
 
 
 @pytest.mark.parametrize(
-    ('constructor_args', 'bus', 'device', 'antenna'),
+    ('constructor_args', 'expected_values'),
     [
-        (None, 0, 0, ANTENNA_ON),
-        ({}, 0, 0, ANTENNA_ON),
-        ({}, 1, 0, ANTENNA_ON),
-        ({}, 0, 1, ANTENNA_ON),
+        (None, {'bus': 0, 'device': 0, 'gpio_mode': realGPIO.BOARD, 'rst_pin': MFRC522.GPIO_BOARD_RST_DEFAULT}),
+        (
+            {'bus': 0, 'device': 0, 'gpio_mode': realGPIO.BOARD, 'rst_pin': None},
+            {'bus': 0, 'device': 0, 'gpio_mode': realGPIO.BOARD, 'rst_pin': MFRC522.GPIO_BOARD_RST_DEFAULT}
+        ),
+        ({'bus': 1}, {'bus': 1, 'device': 0, 'gpio_mode': realGPIO.BOARD, 'rst_pin': MFRC522.GPIO_BOARD_RST_DEFAULT}),
+        ({'device': 1}, {'bus': 0, 'device': 1, 'gpio_mode': realGPIO.BOARD, 'rst_pin': MFRC522.GPIO_BOARD_RST_DEFAULT}),
+        ({'gpio_mode': realGPIO.BCM}, {'bus': 0, 'device': 0, 'gpio_mode': realGPIO.BCM, 'rst_pin': MFRC522.GPIO_BCM_RST_DEFAULT}),
+        ({'rst_pin': 18}, {'bus': 0, 'device': 0, 'gpio_mode': realGPIO.BOARD, 'rst_pin': 18}),
     ],
     ids=[
         'no-arg',
         'explicit defaults',
         'custom bus',
         'custom device',
+        'custom gpio_mode',
+        'custom rst_pin',
     ]
     )
-def test_MFRC522___init__(mock_dependencies, xfer2, constructor_args, bus, device, antenna):
-    initialize_card(xfer2, antenna)
+def test_MFRC522___init__(mock_dependencies, xfer2, constructor_args, expected_values):
+    initialize_card(xfer2, ANTENNA_ON)
     xfer2.set_side_effect()
     mock_dependencies.GPIO.getmode.return_value = None
 
     if constructor_args is None:
         reader = MFRC522()
     else:
-        constructor_args['bus'] = bus
-        constructor_args['device'] = device
         reader = MFRC522(**constructor_args)
-    mock_dependencies.spi.open.assert_called_once_with(bus, device)
+
+    mock_dependencies.spi.open.assert_called_once_with(expected_values['bus'], expected_values['device'])
     mock_dependencies.max_speed_hz_property.assert_called_once_with(MFRC522.MAX_SPEED_HZ)
-    mock_dependencies.GPIO.setmode.assert_called_once_with(mock_dependencies.GPIO.BOARD)
-    mock_dependencies.GPIO.setup.assert_called_once_with(MFRC522.GPIO_BOARD_RST_DEFAULT, mock_dependencies.GPIO.OUT)
-    mock_dependencies.GPIO.output.assert_called_once_with(MFRC522.GPIO_BOARD_RST_DEFAULT, mock_dependencies.GPIO.HIGH)
+    mock_dependencies.GPIO.setmode.assert_called_once_with(expected_values['gpio_mode'])
+    mock_dependencies.GPIO.setup.assert_called_once_with(expected_values['rst_pin'], mock_dependencies.GPIO.OUT)
+    mock_dependencies.GPIO.output.assert_called_once_with(expected_values['rst_pin'], mock_dependencies.GPIO.HIGH)
     mock_dependencies.atexit.register.assert_called_once_with(reader.close)
 
 
