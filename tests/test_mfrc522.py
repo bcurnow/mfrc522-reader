@@ -384,7 +384,16 @@ def test_MFRC522_req_type_a(reader, xfer2):
             4,
         ),
     ],
-    ids=["success", "error", "timeout", "countdown timeout", "interrupt on final iteration", "collision", "extra bits and success", "too many bytes to FIFO"],
+    ids=[
+        "success",
+        "error",
+        "timeout",
+        "countdown timeout",
+        "interrupt on final iteration",
+        "collision",
+        "extra bits and success",
+        "too many bytes to FIFO",
+    ],
 )
 def test_MFRC522_transceive(reader, xfer2, interrupts, expected_status, expected, last_bits):
     data = [0xF1, 0xA9, 0x27, 0x05]
