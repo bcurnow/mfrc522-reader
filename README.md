@@ -94,9 +94,11 @@ The class implements additional, lower-level methods (e.g. `soft_reset`, `antenn
 
 # Development
 
+> **Note:** Because this library depends on `RPi.GPIO` and `spidev`, the test suite can only run on Raspberry Pi hardware. All `make test` / `make coverage` commands must be executed on a Pi (directly or inside the Docker container via `make docker-run`).
+
 ## Docker development environment
 
-The project ships a `Dockerfile` that builds a self-contained development environment, so you don't need to install Python or any of its dependencies directly on your host machine. The image is not published to a registry — it is intended to be built and run locally.
+The project ships a `Dockerfile` that builds a self-contained development environment, so you don't need to install Python or any of its dependencies directly on your host machine. The image is not published to a registry — it is intended to be built and run locally on a Raspberry Pi.
 
 The image creates an `mfrc522` user whose uid/gid are mapped to your current host user, which means files written inside the container won't have mangled ownership on the host. It also copies a few dotfiles from `docker-files/` into the `mfrc522` home directory to configure the shell and vim for basic troubleshooting inside the container.
 
@@ -116,6 +118,8 @@ make docker-run
 
 This drops you into a bash shell with the project root bind-mounted at `/mfrc522-reader`. Changes you make on the host are immediately visible inside the container and vice versa.
 
+The container is started with `--privileged` so that `RPi.GPIO` can access the Pi's hardware. **This command must be run on a Raspberry Pi.**
+
 ## Make targets
 
 A `Makefile` is provided for all common development tasks. Run `make help` for a full list, or use the targets below directly.
@@ -123,11 +127,11 @@ A `Makefile` is provided for all common development tasks. Run `make help` for a
 | Target | Description |
 |---|---|
 | `make install` | Install dependencies from `requirements.txt` |
-| `make test` | Run the test suite |
-| `make coverage` | Run the test suite and report coverage |
+| `make test` | Run the test suite (Raspberry Pi only) |
+| `make coverage` | Run the test suite and report coverage (Raspberry Pi only) |
 | `make lint` | Check code with ruff |
 | `make format` | Format code with ruff |
 | `make build` | Build the Python wheel |
 | `make clean` | Remove build artifacts and coverage data |
 | `make docker-build` | Build the Docker image |
-| `make docker-run` | Run a shell in the Docker container |
+| `make docker-run` | Run a shell in the Docker container (Raspberry Pi only) |

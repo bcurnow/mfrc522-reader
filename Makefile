@@ -34,8 +34,9 @@ docker-build: ## Build the Docker image
 		-t $(IMAGE_NAME):latest \
 		.
 
-docker-run: ## Run a shell in the Docker container (mounts project root)
+docker-run: ## Run a shell in the Docker container (mounts project root, requires Raspberry Pi)
 	docker run -it \
+		--privileged \
 		--mount src="$(CURDIR)",target=/$(IMAGE_NAME),type=bind \
 		$(IMAGE_NAME):latest \
 		/bin/bash
