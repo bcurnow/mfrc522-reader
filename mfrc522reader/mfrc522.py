@@ -262,10 +262,14 @@ class MFRC522:
         self.spi = spidev.SpiDev()
         self.spi.open(bus, device)
         self.spi.max_speed_hz = MFRC522.MAX_SPEED_HZ
-        self.setup_gpio(gpio_mode, rst_pin)
+        try:
+            self.setup_gpio(gpio_mode, rst_pin)
+            self.initialize_card()
+        except Exception:
+            self.spi.close()
+            raise
         # Make sure we cleanup before we exit
         atexit.register(self.close)
-        self.initialize_card()
 
     def card_present(self):
         """Returns true if there are any type A PICCs in the field, False otherwise."""
@@ -293,7 +297,7 @@ class MFRC522:
         """
         do_timeout = False
         # timeout = 0 is valid!
-        if timeout is not None and timeout > -1:
+        if timeout is not None and timeout >= 0:
             do_timeout = True
             timeout = time.time() + timeout
 
@@ -306,9 +310,9 @@ class MFRC522:
                 else:
                     # An error happened, return None
                     return None
-            time.sleep(0.001)  # Wait a very short time to avoid hogging the CPU
             if do_timeout and time.time() >= timeout:
                 return None
+            time.sleep(0.001)  # Wait a very short time to avoid hogging the CPU
 
     def setup_gpio(self, gpio_mode, rst_pin):
         """Correctly configures the GPIO library."""
@@ -406,6 +410,7 @@ class MFRC522:
     def close(self):
         if self.spi:
             self.spi.close()
+            self.spi = None
         # Make sure to reset the value of any GPIO pins we've used to be a good citizen
         GPIO.cleanup()
 
@@ -479,8 +484,7 @@ class MFRC522:
             if interrupts & MFRC522.BIT_MASK_LSB:
                 # timer interrupt - nothing received
                 return (MFRC522.ReturnCode.TIMEOUT, results, results_len)
-
-        if countdown == 0:
+        else:
             # None of the interrupts fired before the countdown finished
             # Did we lose connectivity with the MFRC522?
             return (MFRC522.ReturnCode.COUNTDOWN_TIMEOUT, results, results_len)
@@ -491,15 +495,15 @@ class MFRC522:
 
         # Check how many bytes were written to the FIFO
         bytes_written = self.read(MFRC522.Register.FIFOLevelReg)
+        if bytes_written > MFRC522.FIFO_BUFFER_MAX_SIZE:
+            bytes_written = MFRC522.FIFO_BUFFER_MAX_SIZE
+
         # Check [0][1][2] to see how many valid bits in the last byte (0 (zero) indicates the whole byte is valid)
         bits_in_last_byte = self.read(MFRC522.Register.ControlReg) & 0b00000111
         if bits_in_last_byte != 0:
             results_len = (bytes_written - 1) * MFRC522.BITS_IN_BYTE + bits_in_last_byte
         else:
             results_len = bytes_written * MFRC522.BITS_IN_BYTE
-
-        if bytes_written > MFRC522.FIFO_BUFFER_MAX_SIZE:
-            bytes_written = MFRC522.FIFO_BUFFER_MAX_SIZE
 
         for i in range(bytes_written):
             results.append(self.read(MFRC522.Register.FIFODataReg))
@@ -551,12 +555,12 @@ class MFRC522:
             # Determine some additional options based on the current cascade level
             if cascade_level == MFRC522.PICCCommand.ANTICOLL_CS1:
                 uid_start_index = 0  # We know nothing yet
-
-            if cascade_level == MFRC522.PICCCommand.ANTICOLL_CS2:
+            elif cascade_level == MFRC522.PICCCommand.ANTICOLL_CS2:
                 uid_start_index = 3  # We know about 3 bytes (because we got a cascade tag)
-
-            if cascade_level == MFRC522.PICCCommand.ANTICOLL_CS3:
+            elif cascade_level == MFRC522.PICCCommand.ANTICOLL_CS3:
                 uid_start_index = 6  # We know about 6 bytes (because we got a cascade tag)
+            else:
+                return (MFRC522.ReturnCode.ERR, [])
 
             # Set the command we'll be using
             buffer[0] = cascade_level
@@ -592,7 +596,7 @@ class MFRC522:
                     transceive_buffer_size = 9
                 else:  # This is anticollision
                     if valid_bits > 0:
-                        transceive_bytes = int(valid_bits / MFRC522.BITS_IN_BYTE)
+                        transceive_bytes = valid_bits // MFRC522.BITS_IN_BYTE
                         transceive_bits = valid_bits % MFRC522.BITS_IN_BYTE
                         # Calculate the total number of whole bytes we're going to send,
                         # we always send SEL and NVB and we're only sending the valid UID bytes
@@ -645,7 +649,7 @@ class MFRC522:
                     bit_to_flip = (known_bits - 1) % MFRC522.BITS_IN_BYTE
                     # Determine which index in the buffer contains the bit that needs to be flipped
                     # Start with index 1 ([0] = SEL, [1] = NVB), add the number of whole bytes and then add one if there are still some bits
-                    bit_to_flip_index = 1 + (int(known_bits / MFRC522.BITS_IN_BYTE)) + (1 if collision_bit else 0)
+                    bit_to_flip_index = 1 + (known_bits // MFRC522.BITS_IN_BYTE) + (1 if collision_bit else 0)
                     # Flip the bit by bitwise OR'ing with 1 shifted to the correct bit position
                     buffer[bit_to_flip_index] |= 1 << bit_to_flip
                     # The known bits have all be validated so reset valid_bits
@@ -693,6 +697,9 @@ class MFRC522:
             # Do we have the whole UID or not?
             if results[0] & MFRC522.BIT_MASK_CASCADE_BIT_SET:
                 # Nope, there's still more
+                if cascade_level == MFRC522.PICCCommand.ANTICOLL_CS3:
+                    # The spec allows at most 3 cascade levels; a tag signalling more is violating the protocol
+                    return (MFRC522.ReturnCode.ERR, [])
                 # Take advantage of the fact that MFRC522.PICCCommand is an IntEnum and each cascade level is +2 from the previous
                 cascade_level = MFRC522.PICCCommand(cascade_level + 2)
             else:

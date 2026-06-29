@@ -90,6 +90,7 @@ def test_MFRC522_card_present(reader, xfer2, expected_status, expected, expected
         (0, "04030201", None, None),
         (7, "04030201", None, None),
         (7, "04030201", -1, None),
+        (7, "04030201", -0.5, None),
         (0, "04030201", 0, None),
         (1, None, 0, 1),
         (10, None, 10, 5),
@@ -99,6 +100,7 @@ def test_MFRC522_card_present(reader, xfer2, expected_status, expected, expected
         "success - card immediately present",
         "success - card not immediately present",
         "success - timeout -1",
+        "success - timeout -0.5 (infinite wait)",
         "success - timeout 0 - Card present",
         "fail - timeout 0 - Card not immediately present",
         "success - timeout 10 - Card present",
@@ -138,12 +140,15 @@ def test_MFRC522_read_uid(reader_mocks, xfer2, card_not_present_count, expected,
     xfer2.set_side_effect()
     uid = reader_mocks.reader.read_uid(timeout)
     assert uid == expected
-    do_timeout = False
-    if timeout and timeout > -1:
-        do_timeout = True
+    do_timeout = timeout is not None and timeout >= 0
 
-    if card_not_present_count != 0:
-        reader_mocks.time.sleep.assert_has_calls([call(0.001)] * card_not_present_count)
+    # The deadline is checked before sleeping, so the final card-not-present iteration
+    # that triggers the timeout returns without sleeping.
+    expected_sleep_count = card_not_present_count - (1 if timeout_after else 0)
+    if expected_sleep_count > 0:
+        reader_mocks.time.sleep.assert_has_calls([call(0.001)] * expected_sleep_count)
+    else:
+        reader_mocks.time.sleep.assert_not_called()
 
     if do_timeout:
         reader_mocks.time.time.assert_has_calls([call()] * (1 + card_not_present_count))
@@ -267,6 +272,32 @@ def test_MFRC522_close(reader_mocks, spi):
     reader_mocks.GPIO.cleanup.assert_called_once()
 
 
+def test_MFRC522___init___closes_spi_on_error(mock_dependencies):
+    mock_dependencies.GPIO.getmode.return_value = realGPIO.BOARD
+    with pytest.raises(ValueError):
+        MFRC522(gpio_mode=realGPIO.BCM, rst_pin=5)
+    mock_dependencies.spi.close.assert_called_once()
+    mock_dependencies.atexit.register.assert_not_called()
+
+
+def test_MFRC522_close_is_idempotent(reader_mocks):
+    reader_mocks.reader.close()
+    reader_mocks.reader.close()
+    reader_mocks.spi.close.assert_called_once()
+
+
+def test_MFRC522_anticollision_cascade_past_CS3(reader, xfer2):
+    uid = [0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA]
+    clear_bits_after_collision(xfer2)
+    cascade_level(xfer2, MFRC522.PICCCommand.ANTICOLL_CS1, [MFRC522.CASCADE_TAG] + uid[:3], True)
+    cascade_level(xfer2, MFRC522.PICCCommand.ANTICOLL_CS2, [MFRC522.CASCADE_TAG] + uid[3:6], True)
+    cascade_level(xfer2, MFRC522.PICCCommand.ANTICOLL_CS3, uid[6:], True)
+    xfer2.set_side_effect()
+    status, results = reader.anticollision()
+    assert status == MFRC522.ReturnCode.ERR
+    assert results == []
+
+
 def test_MFRC522_soft_reset(reader, xfer2):
     soft_reset(xfer2)
     xfer2.set_side_effect()
@@ -329,6 +360,12 @@ def test_MFRC522_req_type_a(reader, xfer2):
             0,
         ),
         (
+            [0] * (MFRC522.TRANSCEIVE_CHECKS - 1) + [MFRC522.BIT_MASK_COMIRQ_RX_AND_IDLE],
+            MFRC522.ReturnCode.OK,
+            [0x01, 0xFF],
+            0,
+        ),
+        (
             [0, 0, MFRC522.BIT_MASK_COMIRQ_RX_AND_IDLE],
             MFRC522.ReturnCode.COLLISION,
             [0xAB],
@@ -347,7 +384,7 @@ def test_MFRC522_req_type_a(reader, xfer2):
             4,
         ),
     ],
-    ids=["success", "error", "timeout", "countdown timeout", "collision", "extra bits and success", "too many bytes to FIFO"],
+    ids=["success", "error", "timeout", "countdown timeout", "interrupt on final iteration", "collision", "extra bits and success", "too many bytes to FIFO"],
 )
 def test_MFRC522_transceive(reader, xfer2, interrupts, expected_status, expected, last_bits):
     data = [0xF1, 0xA9, 0x27, 0x05]
