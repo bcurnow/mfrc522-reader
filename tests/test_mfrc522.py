@@ -396,10 +396,11 @@ def test_MFRC522_transceive(reader, xfer2, interrupts, expected_status, expected
         assert results == expected[: MFRC522.FIFO_BUFFER_MAX_SIZE]
     else:
         assert results == expected
+    effective_len = min(len(expected), MFRC522.FIFO_BUFFER_MAX_SIZE)
     if last_bits:
-        assert results_len == ((len(expected) - 1) * MFRC522.BITS_IN_BYTE) + last_bits
+        assert results_len == ((effective_len - 1) * MFRC522.BITS_IN_BYTE) + last_bits
     else:
-        assert results_len == len(expected) * MFRC522.BITS_IN_BYTE
+        assert results_len == effective_len * MFRC522.BITS_IN_BYTE
 
 
 @pytest.mark.parametrize(
