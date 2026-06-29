@@ -1,11 +1,18 @@
 IMAGE_NAME := $(notdir $(CURDIR))
+VENV := .venv
+PYTHON := $(VENV)/bin/python
 
-.PHONY: help build clean coverage docker-build docker-run format install lint release test
+.PHONY: help build clean coverage docker-build docker-run format install lint release setup test
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-15s %s\n", $$1, $$2}'
 
-install: ## Install dependencies from requirements.txt
+setup: ## Create .venv and install all dependencies (run once; activate with: source .venv/bin/activate)
+	python3 -m venv $(VENV)
+	$(PYTHON) -m pip install --upgrade pip
+	$(PYTHON) -m pip install -r requirements.txt
+
+install: ## Install dependencies into the active environment (use 'setup' to also create the venv)
 	pip install -r requirements.txt
 
 test: ## Run the test suite
@@ -24,8 +31,9 @@ format: ## Format code with ruff
 build: ## Build the Python wheel
 	python setup.py bdist_wheel
 
-clean: ## Remove build artifacts and coverage data
+clean: ## Remove build artifacts and coverage data (pass CLEAN_VENV=1 to also remove .venv)
 	rm -rf build dist *.egg-info .coverage
+	$(if $(CLEAN_VENV),rm -rf $(VENV))
 
 release: ## Create a GitHub release. Usage: make release VERSION=1.0.3 (or pre-create a git tag first)
 	@set -e; \
