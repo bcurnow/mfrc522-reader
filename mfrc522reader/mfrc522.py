@@ -559,7 +559,7 @@ class MFRC522:
                 uid_start_index = 3  # We know about 3 bytes (because we got a cascade tag)
             elif cascade_level == MFRC522.PICCCommand.ANTICOLL_CS3:
                 uid_start_index = 6  # We know about 6 bytes (because we got a cascade tag)
-            else:
+            else:  # pragma: no cover
                 return (MFRC522.ReturnCode.ERR, [])
 
             # Set the command we'll be using
