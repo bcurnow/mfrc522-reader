@@ -1,17 +1,21 @@
 <!-- MDTOC maxdepth:6 firsth1:1 numbering:0 flatten:0 bullets:1 updateOnSave:1 -->
 
-- [mfrc522-reader](#mfrc522-reader)   
-- [Why not just use the existing mfrc522 library?](#why-not-just-use-the-existing-mfrc522-library)   
-- [Known Issues or Untested Functionality](#known-issues-or-untested-functionality)   
-- [Missing Functionality](#missing-functionality)   
-- [NXP Semiconductors documentation](#nxp-semiconductors-documentation)   
-- [Usage](#usage)   
-   - [Constructor Arguments](#constructor-arguments)   
-   - [Methods](#methods)   
-      - [read_uid](#read_uid)   
-      - [card_present](#card_present)   
-      - [Additional Methods](#additional-methods)   
-- [Running tests](#running-tests)   
+- [mfrc522-reader](#mfrc522-reader)
+- [Why not just use the existing mfrc522 library?](#why-not-just-use-the-existing-mfrc522-library)
+- [Known Issues or Untested Functionality](#known-issues-or-untested-functionality)
+- [Missing Functionality](#missing-functionality)
+- [NXP Semiconductors documentation](#nxp-semiconductors-documentation)
+- [Usage](#usage)
+   - [Constructor Arguments](#constructor-arguments)
+   - [Methods](#methods)
+      - [read_uid](#read_uid)
+      - [card_present](#card_present)
+      - [Additional Methods](#additional-methods)
+- [Development](#development)
+   - [Docker development environment](#docker-development-environment)
+      - [Building the image](#building-the-image)
+      - [Entering the container](#entering-the-container)
+   - [Make targets](#make-targets)
 
 <!-- /MDTOC -->
 # mfrc522-reader
@@ -88,16 +92,42 @@ The method returns `True` if there is a type A PICC in the RF field or `False` i
 
 The class implements additional, lower-level methods (e.g. `soft_reset`, `antenna_on`, `req_type_a`, `transceive`) but I'll leave you to the documentation in the docstrings if you want to understand those.
 
-# Running tests
+# Development
 
-I prefer to create a Docker container to run all my testing in. A (Dockerfile) is provided along with some helper scripts. I don't publish these containers to a registry as they're designed to be run locally as part of the testing.
+## Docker development environment
 
-There are two helper scripts:
-* `scripts/build.sh` - Builds a new Docker container. This script will name the container based on the parent directory (typically mfrc522-reader) and always tags as `latest`. Will create a new user named `mfrc522` mapped to the current uid on the host which will allow the parent dir of the Dockerfile to be bind mounted into the container but not mangle the permissions. Will also copy files from the `docker-files` directory into the mfrc522 users home to configure a few OS settings (path, vim) to allow for some basic troubleshooting inside the container.
-* `scripts/docker.sh` - Runs the container and drops into a bash shell
+The project ships a `Dockerfile` that builds a self-contained development environment, so you don't need to install Python or any of its dependencies directly on your host machine. The image is not published to a registry — it is intended to be built and run locally.
 
-Once inside the container, run the following commands to execute testing and coverage:
+The image creates an `mfrc522` user whose uid/gid are mapped to your current host user, which means files written inside the container won't have mangled ownership on the host. It also copies a few dotfiles from `docker-files/` into the `mfrc522` home directory to configure the shell and vim for basic troubleshooting inside the container.
+
+### Building the image
+
 ```
-pip install -e .
-coverage run -m pytest
+make docker-build
 ```
+
+The image is tagged `mfrc522-reader:latest`.
+
+### Entering the container
+
+```
+make docker-run
+```
+
+This drops you into a bash shell with the project root bind-mounted at `/mfrc522-reader`. Changes you make on the host are immediately visible inside the container and vice versa.
+
+## Make targets
+
+A `Makefile` is provided for all common development tasks. Run `make help` for a full list, or use the targets below directly.
+
+| Target | Description |
+|---|---|
+| `make install` | Install dependencies from `requirements.txt` |
+| `make test` | Run the test suite |
+| `make coverage` | Run the test suite and report coverage |
+| `make lint` | Check code with ruff |
+| `make format` | Format code with ruff |
+| `make build` | Build the Python wheel |
+| `make clean` | Remove build artifacts and coverage data |
+| `make docker-build` | Build the Docker image |
+| `make docker-run` | Run a shell in the Docker container |
