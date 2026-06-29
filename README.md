@@ -16,6 +16,7 @@
       - [Building the image](#building-the-image)
       - [Entering the container](#entering-the-container)
    - [Make targets](#make-targets)
+   - [Releasing](#releasing)
 
 <!-- /MDTOC -->
 # mfrc522-reader
@@ -135,3 +136,32 @@ A `Makefile` is provided for all common development tasks. Run `make help` for a
 | `make clean` | Remove build artifacts and coverage data |
 | `make docker-build` | Build the Docker image |
 | `make docker-run` | Run a shell in the Docker container (Raspberry Pi only) |
+| `make release VERSION=x.y.z` | Build and publish a GitHub release (see [Releasing](#releasing)) |
+
+## Releasing
+
+Releases are published to GitHub using the `make release` target. Prerequisites:
+
+* The [`gh`](https://cli.github.com/) CLI must be installed and authenticated (`gh auth login`).
+* A `# x.y.z` section must exist in `CHANGELOG.md` with the release notes for the new version.
+
+To create a release:
+
+1. Add a `# x.y.z` section to `CHANGELOG.md` with the changes for this version.
+2. Run:
+   ```
+   make release VERSION=x.y.z
+   ```
+
+The target will:
+* Update the version in `setup.py`.
+* Commit `setup.py` and create an annotated git tag `vx.y.z`.
+* Push the commit and tag to `origin`.
+* Build the wheel (`.whl`) and source distribution (`.tar.gz`).
+* Create a GitHub release with both artifacts attached and the `CHANGELOG.md` section for that version as the release notes.
+
+Alternatively, if you have already created the git tag yourself (e.g. `git tag v1.0.3`), you can omit `VERSION` and the target will detect the latest tag automatically:
+
+```
+make release
+```

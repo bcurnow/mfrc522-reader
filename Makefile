@@ -1,6 +1,6 @@
 IMAGE_NAME := $(notdir $(CURDIR))
 
-.PHONY: help build clean coverage docker-build docker-run format install lint test
+.PHONY: help build clean coverage docker-build docker-run format install lint release test
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-15s %s\n", $$1, $$2}'
@@ -26,6 +26,27 @@ build: ## Build the Python wheel
 
 clean: ## Remove build artifacts and coverage data
 	rm -rf build dist *.egg-info .coverage
+
+release: ## Create a GitHub release. Usage: make release VERSION=1.0.3 (or pre-create a git tag first)
+	@set -e; \
+	if [ -n "$(VERSION)" ]; then \
+		VER="$(VERSION)"; TAG="v$(VERSION)"; CREATE_TAG=1; \
+	else \
+		TAG=$$(git describe --tags --abbrev=0 2>/dev/null); \
+		[ -n "$$TAG" ] || { echo "Error: VERSION required. Usage: make release VERSION=1.0.3"; exit 1; }; \
+		VER=$${TAG#v}; CREATE_TAG=0; \
+	fi; \
+	sed -i "s/version=\"[^\"]*\"/version=\"$$VER\"/" setup.py; \
+	git add setup.py; \
+	git diff --cached --quiet || git commit -m "Release $$VER"; \
+	[ "$$CREATE_TAG" = "0" ] || git rev-parse "$$TAG" >/dev/null 2>&1 || git tag -a "$$TAG" -m "Release $$VER"; \
+	git push origin main; \
+	git push origin "$$TAG"; \
+	rm -rf build dist *.egg-info; \
+	python setup.py sdist bdist_wheel; \
+	gh release create "$$TAG" dist/* \
+		--title "$$TAG" \
+		--notes "$$(awk -v ver="$$VER" '/^# /{if($$0 == "# " ver){found=1; next} else if(found){exit}} found{print}' CHANGELOG.md)"
 
 docker-build: ## Build the Docker image
 	docker image build \
