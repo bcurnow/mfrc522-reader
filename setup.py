@@ -3,31 +3,30 @@
 from setuptools import find_packages, setup
 
 
-with open('README.md', 'r') as fh:
+with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name='mfrc522-reader',
-    version='1.0.2',
-    author='Brian Curnow',
-    author_email='brian.curnow+mfrc522-reader@gmail.com',
-    description='An implementation of a reader for NXP Semiconductors MFRC522 RFID readers.',
+    name="mfrc522-reader",
+    version="1.0.2",
+    author="Brian Curnow",
+    author_email="brian.curnow+mfrc522-reader@gmail.com",
+    description="An implementation of a reader for NXP Semiconductors MFRC522 RFID readers.",
     long_description=long_description,
-    long_description_content_type='text/markdown',
-    url='https://github.com/bcurnow/mfrc522-reader',
+    long_description_content_type="text/markdown",
+    url="https://github.com/bcurnow/mfrc522-reader",
     packages=find_packages(),
     classifiers=[
-        'Programming Language :: Python :: 3.9',
-        'License :: OSI Approved :: Apache Software License'
-        'Operating System :: OS Independent',
-        'Intended Audience :: Developers',
-        'Natural Language :: English',
-        'Topic :: Software Development :: Libraries :: Python Modules',
-
+        "Programming Language :: Python :: 3.13",
+        "License :: OSI Approved :: Apache Software License",
+        "Operating System :: OS Independent",
+        "Intended Audience :: Developers",
+        "Natural Language :: English",
+        "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    python_requires='>=3.6',
+    python_requires=">=3.13",
     install_requires=[
-        'RPi.GPIO',
-        'spidev',
+        "RPi.GPIO",
+        "spidev",
     ],
 )

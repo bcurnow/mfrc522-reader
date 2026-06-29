@@ -3,6 +3,7 @@ This code is heavily influenced by https://github.com/pimylifeup/MFRC522-python 
 so that it's better commented and suited specifically for what this library requires (e.g. reading the uid off a tag).
 The additional documentation comes from NXP's data-sheet on the MFRC522: https://www.nxp.com/docs/en/data-sheet/MFRC522.pdf.
 """
+
 import atexit
 from enum import IntEnum, unique
 import time
@@ -119,7 +120,8 @@ class MFRC522:
 
     @unique
     class ReturnCode(IntEnum):
-        """ The actual values don't matter, the names are important."""
+        """The actual values don't matter, the names are important."""
+
         # everything is OK
         OK = 0
         # There was no tag to read
@@ -150,7 +152,7 @@ class MFRC522:
     @unique
     class PICCCommand(IntEnum):
         # Is there a type A card in the field?
-        REQA = (0x26)
+        REQA = 0x26
         # Anti-collision cascade level 1
         ANTICOLL_CS1 = 0x93
         # Anti-collision cascade level 2
@@ -266,7 +268,7 @@ class MFRC522:
         self.initialize_card()
 
     def card_present(self):
-        """ Returns true if there are any type A PICCs in the field, False otherwise. """
+        """Returns true if there are any type A PICCs in the field, False otherwise."""
         status, results, results_len = self.req_type_a()
 
         # According to the NXP docs the content of the ATQA should be ignored
@@ -309,7 +311,7 @@ class MFRC522:
                 return None
 
     def setup_gpio(self, gpio_mode, rst_pin):
-        """ Correctly configures the GPIO library."""
+        """Correctly configures the GPIO library."""
         current_gpio_mode = GPIO.getmode()
 
         if current_gpio_mode:
@@ -322,10 +324,10 @@ class MFRC522:
                     # Can't continue, the reset pin was passed in and the GPIO modes don't align
                     # if we continue, we'll setup the reset pin in the wrong place.
                     msg = [
-                        f'GPIO mode ({gpio_mode}) and rst_pin ({rst_pin}) were provided but GPIO mode is already set to set to {current_gpio_mode}. ',
-                        'Either change the rst_pin to match the current GPIO mode or determine what other process is setting the GPIO mode.'
+                        f"GPIO mode ({gpio_mode}) and rst_pin ({rst_pin}) were provided but GPIO mode is already set to set to {current_gpio_mode}. ",
+                        "Either change the rst_pin to match the current GPIO mode or determine what other process is setting the GPIO mode.",
                     ]
-                    raise ValueError(''.join(msg))
+                    raise ValueError("".join(msg))
                 else:
                     # rst_pin is the default (None) so we can just switch over to the other mode
                     gpio_mode = current_gpio_mode
@@ -344,7 +346,7 @@ class MFRC522:
         GPIO.output(rst_pin, GPIO.HIGH)
 
     def initialize_card(self):
-        """ Resets the card and then sets our defaults."""
+        """Resets the card and then sets our defaults."""
         self.soft_reset()
         self.write(MFRC522.Register.TModeReg, MFRC522.TPRESCALER_HIGH_FOUR)
         self.write(MFRC522.Register.TPrescalerReg, MFRC522.TPRESCLER_LOW_EIGHT)
@@ -408,7 +410,7 @@ class MFRC522:
         GPIO.cleanup()
 
     def soft_reset(self):
-        """ Executes a soft reset on the card to reset all registers to default values (internal buffer is not changed)."""
+        """Executes a soft reset on the card to reset all registers to default values (internal buffer is not changed)."""
         self.write(MFRC522.Register.CommandReg, MFRC522.PCDCommand.SOFT_RESET)
 
     def antenna_on(self):
@@ -470,11 +472,11 @@ class MFRC522:
         while countdown > 0:
             countdown -= 1
             interrupts = self.read(MFRC522.Register.ComIrqReg)
-            if (interrupts & MFRC522.BIT_MASK_COMIRQ_RX_AND_IDLE):
+            if interrupts & MFRC522.BIT_MASK_COMIRQ_RX_AND_IDLE:
                 # Either receiving is complete or the command completed, either way, we're done waiting
                 break
 
-            if (interrupts & MFRC522.BIT_MASK_LSB):
+            if interrupts & MFRC522.BIT_MASK_LSB:
                 # timer interrupt - nothing received
                 return (MFRC522.ReturnCode.TIMEOUT, results, results_len)
 
@@ -622,7 +624,7 @@ class MFRC522:
                         # We don't have a valid collision position and can't continue
                         return (MFRC522.ReturnCode.INVALID_COLLISION_POSITION, results)
                     collision_position = collision_info & MFRC522.BIT_MASK_COLLREG_POSITION
-                    if (collision_position == 0):
+                    if collision_position == 0:
                         collision_position = 32
                     if collision_position <= valid_bits:
                         # Wait a second, we already know these bits are valid so
@@ -645,7 +647,7 @@ class MFRC522:
                     # Start with index 1 ([0] = SEL, [1] = NVB), add the number of whole bytes and then add one if there are still some bits
                     bit_to_flip_index = 1 + (int(known_bits / MFRC522.BITS_IN_BYTE)) + (1 if collision_bit else 0)
                     # Flip the bit by bitwise OR'ing with 1 shifted to the correct bit position
-                    buffer[bit_to_flip_index] |= (1 << bit_to_flip)
+                    buffer[bit_to_flip_index] |= 1 << bit_to_flip
                     # The known bits have all be validated so reset valid_bits
                     valid_bits = known_bits
                 elif status != MFRC522.ReturnCode.OK:
@@ -667,7 +669,7 @@ class MFRC522:
                         select = True
 
             # Select complete, let's review the SAK, we should always return 3 bytes (SAK + 2 byte CRC)
-            if (len(results) != 3):
+            if len(results) != 3:
                 return (MFRC522.ReturnCode.INVALID_SAK_RESULT, results)
 
             # Let's double check that CRC_A we got back by recalculating our own
@@ -694,7 +696,7 @@ class MFRC522:
                 # Take advantage of the fact that MFRC522.PICCCommand is an IntEnum and each cascade level is +2 from the previous
                 cascade_level = MFRC522.PICCCommand(cascade_level + 2)
             else:
-                return (MFRC522.ReturnCode.OK, uid[:MFRC522.UID_SIZE_AT_CASCADE_LEVEL[cascade_level]])
+                return (MFRC522.ReturnCode.OK, uid[: MFRC522.UID_SIZE_AT_CASCADE_LEVEL[cascade_level]])
 
     def calculate_crc(self, data):
         """
@@ -733,11 +735,11 @@ class MFRC522:
         return (MFRC522.ReturnCode.COUNTDOWN_TIMEOUT, [])
 
     def _clear_bits_after_collision(self):
-        """ Sets ValuesAfterColl in the CollReg to zero to ensure all bits are cleared after a collision."""
+        """Sets ValuesAfterColl in the CollReg to zero to ensure all bits are cleared after a collision."""
         self.unset_bits(MFRC522.Register.CollReg, MFRC522.BIT_MASK_MSB)
 
     def _write_data_to_fifo(self, data):
-        """ Writes the List of bytes to the FIFO register. """
+        """Writes the List of bytes to the FIFO register."""
         for datum in data:
             self.write(MFRC522.Register.FIFODataReg, datum)
 
@@ -757,5 +759,5 @@ class MFRC522:
         for digit in reversed(uid):
             # f-string format indicates to pad the value with up to 2 zeros (0>2)
             # and use uppercase hex values
-            rv.append(f'{digit:0>2X}')
-        return ''.join(rv)
+            rv.append(f"{digit:0>2X}")
+        return "".join(rv)

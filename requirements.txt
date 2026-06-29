@@ -1,6 +1,7 @@
-pytest
 coverage
+pytest
+ruff
+setuptools
 wheel
-flake8
 RPi.GPIO
 spidev

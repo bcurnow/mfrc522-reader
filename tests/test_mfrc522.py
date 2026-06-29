@@ -27,27 +27,27 @@ def test_Register_write():
 
 
 @pytest.mark.parametrize(
-    ('constructor_args', 'expected_values'),
+    ("constructor_args", "expected_values"),
     [
-        (None, {'bus': 0, 'device': 0, 'gpio_mode': realGPIO.BOARD, 'rst_pin': MFRC522.GPIO_BOARD_RST_DEFAULT}),
+        (None, {"bus": 0, "device": 0, "gpio_mode": realGPIO.BOARD, "rst_pin": MFRC522.GPIO_BOARD_RST_DEFAULT}),
         (
-            {'bus': 0, 'device': 0, 'gpio_mode': realGPIO.BOARD, 'rst_pin': None},
-            {'bus': 0, 'device': 0, 'gpio_mode': realGPIO.BOARD, 'rst_pin': MFRC522.GPIO_BOARD_RST_DEFAULT}
+            {"bus": 0, "device": 0, "gpio_mode": realGPIO.BOARD, "rst_pin": None},
+            {"bus": 0, "device": 0, "gpio_mode": realGPIO.BOARD, "rst_pin": MFRC522.GPIO_BOARD_RST_DEFAULT},
         ),
-        ({'bus': 1}, {'bus': 1, 'device': 0, 'gpio_mode': realGPIO.BOARD, 'rst_pin': MFRC522.GPIO_BOARD_RST_DEFAULT}),
-        ({'device': 1}, {'bus': 0, 'device': 1, 'gpio_mode': realGPIO.BOARD, 'rst_pin': MFRC522.GPIO_BOARD_RST_DEFAULT}),
-        ({'gpio_mode': realGPIO.BCM}, {'bus': 0, 'device': 0, 'gpio_mode': realGPIO.BCM, 'rst_pin': MFRC522.GPIO_BCM_RST_DEFAULT}),
-        ({'rst_pin': 18}, {'bus': 0, 'device': 0, 'gpio_mode': realGPIO.BOARD, 'rst_pin': 18}),
+        ({"bus": 1}, {"bus": 1, "device": 0, "gpio_mode": realGPIO.BOARD, "rst_pin": MFRC522.GPIO_BOARD_RST_DEFAULT}),
+        ({"device": 1}, {"bus": 0, "device": 1, "gpio_mode": realGPIO.BOARD, "rst_pin": MFRC522.GPIO_BOARD_RST_DEFAULT}),
+        ({"gpio_mode": realGPIO.BCM}, {"bus": 0, "device": 0, "gpio_mode": realGPIO.BCM, "rst_pin": MFRC522.GPIO_BCM_RST_DEFAULT}),
+        ({"rst_pin": 18}, {"bus": 0, "device": 0, "gpio_mode": realGPIO.BOARD, "rst_pin": 18}),
     ],
     ids=[
-        'no-arg',
-        'explicit defaults',
-        'custom bus',
-        'custom device',
-        'custom gpio_mode',
-        'custom rst_pin',
-    ]
-    )
+        "no-arg",
+        "explicit defaults",
+        "custom bus",
+        "custom device",
+        "custom gpio_mode",
+        "custom rst_pin",
+    ],
+)
 def test_MFRC522___init__(mock_dependencies, xfer2, constructor_args, expected_values):
     initialize_card(xfer2, ANTENNA_ON)
     xfer2.set_side_effect()
@@ -58,26 +58,22 @@ def test_MFRC522___init__(mock_dependencies, xfer2, constructor_args, expected_v
     else:
         reader = MFRC522(**constructor_args)
 
-    mock_dependencies.spi.open.assert_called_once_with(expected_values['bus'], expected_values['device'])
+    mock_dependencies.spi.open.assert_called_once_with(expected_values["bus"], expected_values["device"])
     mock_dependencies.max_speed_hz_property.assert_called_once_with(MFRC522.MAX_SPEED_HZ)
-    mock_dependencies.GPIO.setmode.assert_called_once_with(expected_values['gpio_mode'])
-    mock_dependencies.GPIO.setup.assert_called_once_with(expected_values['rst_pin'], mock_dependencies.GPIO.OUT)
-    mock_dependencies.GPIO.output.assert_called_once_with(expected_values['rst_pin'], mock_dependencies.GPIO.HIGH)
+    mock_dependencies.GPIO.setmode.assert_called_once_with(expected_values["gpio_mode"])
+    mock_dependencies.GPIO.setup.assert_called_once_with(expected_values["rst_pin"], mock_dependencies.GPIO.OUT)
+    mock_dependencies.GPIO.output.assert_called_once_with(expected_values["rst_pin"], mock_dependencies.GPIO.HIGH)
     mock_dependencies.atexit.register.assert_called_once_with(reader.close)
 
 
 @pytest.mark.parametrize(
-    ('expected_status', 'expected', 'expected_rv'),
+    ("expected_status", "expected", "expected_rv"),
     [
         (MFRC522.ReturnCode.OK, [0x1, 0x2], True),
         (MFRC522.ReturnCode.ERR, [], False),
         (MFRC522.ReturnCode.OK, [0x1, 0x2, 0x3], False),
     ],
-    ids=[
-        'card present',
-        'error',
-        'incorrect number of bytes'
-    ]
+    ids=["card present", "error", "incorrect number of bytes"],
 )
 def test_MFRC522_card_present(reader, xfer2, expected_status, expected, expected_rv):
     clear_bits_after_collision(xfer2)
@@ -89,25 +85,25 @@ def test_MFRC522_card_present(reader, xfer2, expected_status, expected, expected
 
 
 @pytest.mark.parametrize(
-    ('card_not_present_count', 'expected', 'timeout', 'timeout_after'),
+    ("card_not_present_count", "expected", "timeout", "timeout_after"),
     [
-        (0, '04030201', None, None),
-        (7, '04030201', None, None),
-        (7, '04030201', -1, None),
-        (0, '04030201', 0, None),
+        (0, "04030201", None, None),
+        (7, "04030201", None, None),
+        (7, "04030201", -1, None),
+        (0, "04030201", 0, None),
         (1, None, 0, 1),
         (10, None, 10, 5),
-        (0, None, 0, None)
+        (0, None, 0, None),
     ],
     ids=[
-        'success - card immediately present',
-        'success - card not immediately present',
-        'success - timeout -1',
-        'success - timeout 0 - Card present',
-        'fail - timeout 0 - Card not immediately present',
-        'success - timeout 10 - Card present',
-        'fail - error from anticollision',
-    ]
+        "success - card immediately present",
+        "success - card not immediately present",
+        "success - timeout -1",
+        "success - timeout 0 - Card present",
+        "fail - timeout 0 - Card not immediately present",
+        "success - timeout 10 - Card present",
+        "fail - error from anticollision",
+    ],
 )
 def test_MFRC522_read_uid(reader_mocks, xfer2, card_not_present_count, expected, timeout, timeout_after):
     if timeout_after:
@@ -154,7 +150,7 @@ def test_MFRC522_read_uid(reader_mocks, xfer2, card_not_present_count, expected,
 
 
 @pytest.mark.parametrize(
-    ('current_gpio_mode', 'gpio_mode', 'rst_pin', 'expected_rst_pin'),
+    ("current_gpio_mode", "gpio_mode", "rst_pin", "expected_rst_pin"),
     [
         (None, realGPIO.BOARD, None, MFRC522.GPIO_BOARD_RST_DEFAULT),
         (None, realGPIO.BCM, None, MFRC522.GPIO_BCM_RST_DEFAULT),
@@ -170,27 +166,27 @@ def test_MFRC522_read_uid(reader_mocks, xfer2, card_not_present_count, expected,
         (realGPIO.BCM, realGPIO.BOARD, 5, None),
     ],
     ids=[
-        'GPIO mode unset, requested BOARD, rst_pin unset',
-        'GPIO mode unset, requested BCM, rst_pin unset',
-        'GPIO mode unset, requested BOARD, rst_pin set',
-        'GPIO mode unset, requested BCM, rst_pin set',
-        'GPIO mode BOARD, requested BOARD, rst_pin unset',
-        'GPIO mode BOARD, requested BOARD, rst_pin set',
-        'GPIO mode BOARD, requested BCM, rst_pin unset',
-        'GPIO mode BOARD, requested BCM, rst_pin set',
-        'GPIO mode BCM, requested BCM, rst_pin unset',
-        'GPIO mode BCM, requested BCM, rst_pin set',
-        'GPIO mode BCM, requested BOARD, rst_pin unset',
-        'GPIO mode BCM, requested BOARD, rst_pin set',
-    ]
-    )
+        "GPIO mode unset, requested BOARD, rst_pin unset",
+        "GPIO mode unset, requested BCM, rst_pin unset",
+        "GPIO mode unset, requested BOARD, rst_pin set",
+        "GPIO mode unset, requested BCM, rst_pin set",
+        "GPIO mode BOARD, requested BOARD, rst_pin unset",
+        "GPIO mode BOARD, requested BOARD, rst_pin set",
+        "GPIO mode BOARD, requested BCM, rst_pin unset",
+        "GPIO mode BOARD, requested BCM, rst_pin set",
+        "GPIO mode BCM, requested BCM, rst_pin unset",
+        "GPIO mode BCM, requested BCM, rst_pin set",
+        "GPIO mode BCM, requested BOARD, rst_pin unset",
+        "GPIO mode BCM, requested BOARD, rst_pin set",
+    ],
+)
 def test_MFRC522_setup_gpio(reader_mocks, current_gpio_mode, gpio_mode, rst_pin, expected_rst_pin):
     reader_mocks.GPIO.getmode.return_value = current_gpio_mode
 
     if expected_rst_pin is None:
         match = re.escape(
-            f'GPIO mode ({gpio_mode}) and rst_pin ({rst_pin}) were provided but GPIO mode is already set to set to {current_gpio_mode}.'
-            )
+            f"GPIO mode ({gpio_mode}) and rst_pin ({rst_pin}) were provided but GPIO mode is already set to set to {current_gpio_mode}."
+        )
         with pytest.raises(ValueError, match=match):
             reader_mocks.reader.setup_gpio(gpio_mode, rst_pin)
     else:
@@ -222,12 +218,12 @@ def test_MFRC522_write(reader, xfer2):
 
 
 @pytest.mark.parametrize(
-    ('current_value', 'mask'),
+    ("current_value", "mask"),
     [
         (0b00000000, 0b00000000),
         (0b11111111, 0b00000000),
         (0b00001000, 0b10000000),
-    ]
+    ],
 )
 def test_MFRC522_set_bits(reader, xfer2, current_value, mask):
     set_bits(xfer2, MFRC522.Register.TxControlReg, mask, current_value)
@@ -236,12 +232,12 @@ def test_MFRC522_set_bits(reader, xfer2, current_value, mask):
 
 
 @pytest.mark.parametrize(
-    ('current_value', 'mask'),
+    ("current_value", "mask"),
     [
         (0b00000000, 0b00000000),
         (0b11111111, 0b00000000),
         (0b00001000, 0b10000000),
-    ]
+    ],
 )
 def test_MFRC522_unset_bits(reader, xfer2, current_value, mask):
     unset_bits(xfer2, MFRC522.Register.DivIrqReg, mask, current_value)
@@ -250,15 +246,15 @@ def test_MFRC522_unset_bits(reader, xfer2, current_value, mask):
 
 
 @pytest.mark.parametrize(
-    ('spi',),
+    ("spi",),
     [
-        (True, ),
-        (False, ),
+        (True,),
+        (False,),
     ],
     ids=[
-        'spi set',
-        'spi None',
-    ]
+        "spi set",
+        "spi None",
+    ],
 )
 def test_MFRC522_close(reader_mocks, spi):
     if not spi:
@@ -278,12 +274,12 @@ def test_MFRC522_soft_reset(reader, xfer2):
 
 
 @pytest.mark.parametrize(
-    ('antenna',),
+    ("antenna",),
     [
-        (ANTENNA_ON, ),
-        (ANTENNA_OFF, ),
+        (ANTENNA_ON,),
+        (ANTENNA_OFF,),
     ],
-    ids=['Antenna was on', 'Antenna was off']
+    ids=["Antenna was on", "Antenna was off"],
 )
 def test_MFRC522_antenna_on(reader, xfer2, antenna):
     antenna_on(xfer2, antenna)
@@ -306,7 +302,7 @@ def test_MFRC522_req_type_a(reader, xfer2):
 
 
 @pytest.mark.parametrize(
-    ('interrupts', 'expected_status', 'expected', 'last_bits'),
+    ("interrupts", "expected_status", "expected", "last_bits"),
     [
         (
             [0, 0, MFRC522.BIT_MASK_COMIRQ_RX_AND_IDLE],
@@ -351,15 +347,7 @@ def test_MFRC522_req_type_a(reader, xfer2):
             4,
         ),
     ],
-    ids=[
-        'success',
-        'error',
-        'timeout',
-        'countdown timeout',
-        'collision',
-        'extra bits and success',
-        'too many bytes to FIFO'
-        ]
+    ids=["success", "error", "timeout", "countdown timeout", "collision", "extra bits and success", "too many bytes to FIFO"],
 )
 def test_MFRC522_transceive(reader, xfer2, interrupts, expected_status, expected, last_bits):
     data = [0xF1, 0xA9, 0x27, 0x05]
@@ -368,7 +356,7 @@ def test_MFRC522_transceive(reader, xfer2, interrupts, expected_status, expected
     status, results, results_len = reader.transceive(data)
     assert status == expected_status
     if len(expected) > MFRC522.FIFO_BUFFER_MAX_SIZE:
-        assert results == expected[:MFRC522.FIFO_BUFFER_MAX_SIZE]
+        assert results == expected[: MFRC522.FIFO_BUFFER_MAX_SIZE]
     else:
         assert results == expected
     if last_bits:
@@ -378,63 +366,37 @@ def test_MFRC522_transceive(reader, xfer2, interrupts, expected_status, expected
 
 
 @pytest.mark.parametrize(
-    ('uid', 'expected_results', 'expected_status', 'collision_positions'),
+    ("uid", "expected_results", "expected_status", "collision_positions"),
     [
-        (
-            [0x1, 0x2, 0x3, 0x4], None, MFRC522.ReturnCode.OK, []
-        ),
-        (
-            [0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7], None, MFRC522.ReturnCode.OK, []
-        ),
-        (
-            [0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA], None, MFRC522.ReturnCode.OK, []
-        ),
-        (
-            [0x1, 0x2, 0x3, 0x4], None, MFRC522.ReturnCode.OK, [3]
-        ),
-        (
-            [0x1, 0x2, 0x3, 0x4], None, MFRC522.ReturnCode.OK, [3, 9, 12, 16, 22, 24, 31]
-        ),
-        (
-            [0x1, 0x2, 0x3, 0x4], None, MFRC522.ReturnCode.OK, [32]
-        ),
-        (
-            [0x1, 0x2, 0x3, 0x4], [], MFRC522.ReturnCode.CRC_ERROR, []
-        ),
-        (
-            [0x1, 0x2, 0x3, 0x4], None, MFRC522.ReturnCode.INVALID_COLLISION_POSITION, [33]
-        ),
-        (
-            [0x1, 0x2, 0x3, 0x4], [1], MFRC522.ReturnCode.UNKNOWN_COLLISION_ERROR, [5, 5]
-        ),
-        (
-            [0x1, 0x2, 0x3, 0x4], [], MFRC522.ReturnCode.TRANSCEIVE_ERROR, []
-        ),
-        (
-            [0x1, 0x2, 0x3, 0x4], ['too', 'many', 'items', 'in', 'result'], MFRC522.ReturnCode.INVALID_SAK_RESULT, []
-        ),
-        (
-            [0x1, 0x2, 0x3, 0x4], [], MFRC522.ReturnCode.SAK_CRC_ERROR, []
-        ),
-        (
-            [0x1, 0x2, 0x3, 0x4], [-5, 34, 86, 'bogus', 'values'], MFRC522.ReturnCode.SAK_CRC_WRONG, []
-        ),
+        ([0x1, 0x2, 0x3, 0x4], None, MFRC522.ReturnCode.OK, []),
+        ([0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7], None, MFRC522.ReturnCode.OK, []),
+        ([0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA], None, MFRC522.ReturnCode.OK, []),
+        ([0x1, 0x2, 0x3, 0x4], None, MFRC522.ReturnCode.OK, [3]),
+        ([0x1, 0x2, 0x3, 0x4], None, MFRC522.ReturnCode.OK, [3, 9, 12, 16, 22, 24, 31]),
+        ([0x1, 0x2, 0x3, 0x4], None, MFRC522.ReturnCode.OK, [32]),
+        ([0x1, 0x2, 0x3, 0x4], [], MFRC522.ReturnCode.CRC_ERROR, []),
+        ([0x1, 0x2, 0x3, 0x4], None, MFRC522.ReturnCode.INVALID_COLLISION_POSITION, [33]),
+        ([0x1, 0x2, 0x3, 0x4], [1], MFRC522.ReturnCode.UNKNOWN_COLLISION_ERROR, [5, 5]),
+        ([0x1, 0x2, 0x3, 0x4], [], MFRC522.ReturnCode.TRANSCEIVE_ERROR, []),
+        ([0x1, 0x2, 0x3, 0x4], ["too", "many", "items", "in", "result"], MFRC522.ReturnCode.INVALID_SAK_RESULT, []),
+        ([0x1, 0x2, 0x3, 0x4], [], MFRC522.ReturnCode.SAK_CRC_ERROR, []),
+        ([0x1, 0x2, 0x3, 0x4], [-5, 34, 86, "bogus", "values"], MFRC522.ReturnCode.SAK_CRC_WRONG, []),
     ],
     ids=[
-        'success - single',
-        'success - double',
-        'success - triple',
-        'success - single collision',
-        'success - multiple collisions',
-        'success - collision on 32nd bit',
-        'select CRC error',
-        'invalid collision position',
-        'collision position does not progress',
-        'transceive error',
-        'invalid SAK',
-        'SAK CRC calculation error',
-        'SAK CRC result incorrect',
-        ]
+        "success - single",
+        "success - double",
+        "success - triple",
+        "success - single collision",
+        "success - multiple collisions",
+        "success - collision on 32nd bit",
+        "select CRC error",
+        "invalid collision position",
+        "collision position does not progress",
+        "transceive error",
+        "invalid SAK",
+        "SAK CRC calculation error",
+        "SAK CRC result incorrect",
+    ],
 )
 def test_MFRC522_anticollision(reader, xfer2, uid, expected_results, expected_status, collision_positions):
     if expected_results is None:
@@ -468,7 +430,7 @@ def test_MFRC522_anticollision(reader, xfer2, uid, expected_results, expected_st
 
 
 @pytest.mark.parametrize(
-    ('interrupts', 'expected_status', 'expected_crc'),
+    ("interrupts", "expected_status", "expected_crc"),
     [
         (
             [0, 0, MFRC522.BIT_MASK_DIVIRQ_CRCIRQ],
@@ -481,7 +443,7 @@ def test_MFRC522_anticollision(reader, xfer2, uid, expected_results, expected_st
             [],
         ),
     ],
-    ids=['Two loops and success', 'countdown timeout']
+    ids=["Two loops and success", "countdown timeout"],
 )
 def test_MFRC522_calculate_crc(reader, xfer2, interrupts, expected_status, expected_crc):
     data = [0x13, 0x15, 0xAB]
@@ -493,12 +455,12 @@ def test_MFRC522_calculate_crc(reader, xfer2, interrupts, expected_status, expec
 
 
 @pytest.mark.parametrize(
-    ('current_value',),
+    ("current_value",),
     [
         (0b00000000,),
         (0b11111111,),
         (0b00001000,),
-    ]
+    ],
 )
 def test_MFRC522__clear_bits_after_collision(reader, xfer2, current_value):
     clear_bits_after_collision(xfer2, current_value)
@@ -507,13 +469,13 @@ def test_MFRC522__clear_bits_after_collision(reader, xfer2, current_value):
 
 
 @pytest.mark.parametrize(
-    ('data',),
+    ("data",),
     [
         ([],),
         ([0x28],),
         ([0x55, 0x19],),
     ],
-    ids=['empty data', 'single element', 'two elements']
+    ids=["empty data", "single element", "two elements"],
 )
 def test_MFRC522__write_data_to_fifo(reader, xfer2, data):
     write_fifo(xfer2, data)
@@ -521,15 +483,15 @@ def test_MFRC522__write_data_to_fifo(reader, xfer2, data):
 
 
 @pytest.mark.parametrize(
-    ('uid', 'expected'),
+    ("uid", "expected"),
     [
-        ([], ''),
-        ([0x04, 0x22, 0xA9, 0x45], '45A92204'),
-        ([0x55, 0x19, 0xAB, 0xFF, 0x00, 0x99, 0xC1], 'C19900FFAB1955'),
-        ([0xD1, 0xE9, 0x01, 0x10, 0x78, 0x26, 0x05, 0x98, 0xBB, 0x9B], '9BBB980526781001E9D1'),
-        ([0xD1, 0xE9, 0x01, 0x10, 0x78, 0x26, 0x05, 0x98, 0xBB, 0x9B, 0x22, 0xFF, 0x10], '10FF229BBB980526781001E9D1'),
+        ([], ""),
+        ([0x04, 0x22, 0xA9, 0x45], "45A92204"),
+        ([0x55, 0x19, 0xAB, 0xFF, 0x00, 0x99, 0xC1], "C19900FFAB1955"),
+        ([0xD1, 0xE9, 0x01, 0x10, 0x78, 0x26, 0x05, 0x98, 0xBB, 0x9B], "9BBB980526781001E9D1"),
+        ([0xD1, 0xE9, 0x01, 0x10, 0x78, 0x26, 0x05, 0x98, 0xBB, 0x9B, 0x22, 0xFF, 0x10], "10FF229BBB980526781001E9D1"),
     ],
-    ids=['empty data', 'single', 'double', 'triple', 'too many']
+    ids=["empty data", "single", "double", "triple", "too many"],
 )
 def test_MFRC522__uid_bytes_to_hex_string(reader_mocks, uid, expected):
     assert reader_mocks.reader._uid_bytes_to_hex_string(uid) == expected
@@ -557,10 +519,7 @@ def antenna_on(xfer2, antenna_value):
 
 
 def write(xfer2, register, *values):
-    data = [
-        register.write(),
-        *values
-    ]
+    data = [register.write(), *values]
     xfer2.add(data)
 
 
@@ -592,7 +551,7 @@ def clear_bits_after_collision(xfer2, current_value=0):
 
 
 def transceive(xfer2, data, expected, interrupts=[MFRC522.BIT_MASK_COMIRQ_RX_AND_IDLE], status=MFRC522.ReturnCode.OK, last_bits=0):
-    """ Wraps up all the xfer2 calls made as part of the transceive call. Defaults to a single check loop and successful return code."""
+    """Wraps up all the xfer2 calls made as part of the transceive call. Defaults to a single check loop and successful return code."""
     write(xfer2, MFRC522.Register.CommandReg, MFRC522.PCDCommand.IDLE)
     unset_bits(xfer2, MFRC522.Register.ComIrqReg, MFRC522.BIT_MASK_MSB)
     set_bits(xfer2, MFRC522.Register.FIFOLevelReg, MFRC522.BIT_MASK_MSB)
@@ -616,7 +575,7 @@ def transceive(xfer2, data, expected, interrupts=[MFRC522.BIT_MASK_COMIRQ_RX_AND
 
 
 def calculate_crc(xfer2, data, expected_crc, interrupts=[MFRC522.BIT_MASK_DIVIRQ_CRCIRQ], expected_status=MFRC522.ReturnCode.OK):
-    """ Wraps up all the xfer2 calls made as part of the calculate_crc call. Defaults to a single check loop and successful return code."""
+    """Wraps up all the xfer2 calls made as part of the calculate_crc call. Defaults to a single check loop and successful return code."""
     write(xfer2, MFRC522.Register.CommandReg, MFRC522.PCDCommand.IDLE)
     unset_bits(xfer2, MFRC522.Register.DivIrqReg, 0)
     set_bits(xfer2, MFRC522.Register.FIFOLevelReg, MFRC522.BIT_MASK_MSB)
@@ -656,7 +615,7 @@ def cascade_level(xfer2, cascade_level, uid, set_cascade_bit=False, collision_po
         uid_bits_to_send = known_bits % 8
         bit_to_flip = (known_bits - 1) % 8
         index_to_flip = (uid_bytes_to_send - 1) + (1 if uid_bits_to_send else 0)
-        transceive_input_uid[index_to_flip] |= (1 << bit_to_flip)
+        transceive_input_uid[index_to_flip] |= 1 << bit_to_flip
     else:
         uid_bytes_to_send = 0
         uid_bits_to_send = 0
@@ -686,13 +645,13 @@ def cascade_level(xfer2, cascade_level, uid, set_cascade_bit=False, collision_po
         else:
             sak = [~MFRC522.BIT_MASK_CASCADE_BIT_SET] + crc
         if invalid_sak_result_error:
-            sak = ['too', 'many', 'items', 'in', 'result']
+            sak = ["too", "many", "items", "in", "result"]
         transceive(xfer2, data, sak)
         if not invalid_sak_result_error:
             if sak_crc_error:
                 calculate_crc(xfer2, sak[:1], crc, interrupts=[0] * MFRC522.CRC_CHECKS, expected_status=MFRC522.ReturnCode.COUNTDOWN_TIMEOUT)
             elif sak_crc_wrong_error:
-                calculate_crc(xfer2, sak[:1], ['bogus', 'values'])
+                calculate_crc(xfer2, sak[:1], ["bogus", "values"])
             else:
                 # Recalculate the CRC on the SAK
                 calculate_crc(xfer2, sak[:1], crc)
@@ -711,7 +670,7 @@ def collision_cycle(xfer2, cascade_level, uid, collision_positions, set_cascade_
             # Remember to flip the collision bit
             bit_to_flip = (known_bits - 1) % 8
             index_to_flip = (uid_bytes_to_send - 1) + (1 if uid_bits_to_send else 0)
-            transceive_input_uid[index_to_flip] |= (1 << bit_to_flip)
+            transceive_input_uid[index_to_flip] |= 1 << bit_to_flip
             write(xfer2, MFRC522.Register.BitFramingReg, (uid_bits_to_send << 4) + uid_bits_to_send)
             data = [cascade_level, ((2 + uid_bytes_to_send) << 4) + uid_bits_to_send] + transceive_input_uid
             transceive(xfer2, data, transceive_return_uid, status=MFRC522.ReturnCode.COLLISION)
@@ -731,5 +690,5 @@ def collision_cycle(xfer2, cascade_level, uid, collision_positions, set_cascade_
 
 
 def transceive_uid(uid, max_bits):
-    """ Slices the supplied uid List based on the maximum bits the UID should contain."""
-    return uid[:int(max_bits / 8) + (1 if (max_bits % 8) else 0)]
+    """Slices the supplied uid List based on the maximum bits the UID should contain."""
+    return uid[: int(max_bits / 8) + (1 if (max_bits % 8) else 0)]

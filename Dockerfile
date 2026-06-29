@@ -1,4 +1,4 @@
-from python:3
+FROM python:3.13-slim
 
 ARG USER_ID
 ARG GROUP_ID
@@ -18,9 +18,10 @@ RUN if [ ${USER_ID:-0} -eq 0 ] || [ ${GROUP_ID:-0} -eq 0 ]; then \
     && echo "mfrc522 ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/mfrc522-all-nopasswd
 
 RUN apt-get update && apt-get -y install --no-install-recommends \
-    vim \
-    sudo \
+    build-essential \
     less \
+    sudo \
+    vim \
     && rm -rf /var/lib/apt/lists/*
 
 COPY ./docker-files/home/.* /home/mfrc522/

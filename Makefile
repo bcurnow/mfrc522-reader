@@ -1,0 +1,41 @@
+IMAGE_NAME := $(notdir $(CURDIR))
+
+.PHONY: help build clean coverage docker-build docker-run format install lint test
+
+help: ## Show this help message
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-15s %s\n", $$1, $$2}'
+
+install: ## Install dependencies from requirements.txt
+	pip install -r requirements.txt
+
+test: ## Run the test suite
+	pytest
+
+coverage: ## Run the test suite and report coverage
+	coverage run -m pytest
+	coverage report
+
+lint: ## Check code with ruff
+	ruff check .
+
+format: ## Format code with ruff
+	ruff format .
+
+build: ## Build the Python wheel
+	python setup.py bdist_wheel
+
+clean: ## Remove build artifacts and coverage data
+	rm -rf build dist *.egg-info .coverage
+
+docker-build: ## Build the Docker image
+	docker image build \
+		--build-arg USER_ID=$(shell id -u) \
+		--build-arg GROUP_ID=$(shell id -g) \
+		-t $(IMAGE_NAME):latest \
+		.
+
+docker-run: ## Run a shell in the Docker container (mounts project root)
+	docker run -it \
+		--mount src="$(CURDIR)",target=/$(IMAGE_NAME),type=bind \
+		$(IMAGE_NAME):latest \
+		/bin/bash
