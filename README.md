@@ -15,6 +15,7 @@
    - [Docker development environment](#docker-development-environment)
       - [Building the image](#building-the-image)
       - [Entering the container](#entering-the-container)
+   - [Local Python Environment](#local-python-environment)
    - [Make targets](#make-targets)
    - [Releasing](#releasing)
 
@@ -120,6 +121,21 @@ make docker-run
 This drops you into a bash shell with the project root bind-mounted at `/mfrc522-reader`. Changes you make on the host are immediately visible inside the container and vice versa.
 
 The container is started with `--privileged` so that `RPi.GPIO` can access the Pi's hardware. **This command must be run on a Raspberry Pi.**
+
+## Local Python Environment
+
+On Linux, ensure the following system packages are installed before running `make setup`:
+
+```bash
+sudo apt-get install build-essential python3-dev
+```
+
+Then create the virtual environment and install all dependencies:
+
+```bash
+make setup
+source .venv/bin/activate
+```
 
 ## Make targets
 
